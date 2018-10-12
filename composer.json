@@ -1,10 +1,10 @@
 {
-    "name": "evenN2S/iso8583-custom",
+    "name": "even-n2s/iso8583-custom",
     "description": "ISO8583 Pack/Unpack library based on m1ome/iso8583",
     "license": "MIT",
     "authors": [
         {
-            "name": "evenN2S",
+            "name": "Even Rama",
             "email": "even@net2software.com"
         }
     ],
