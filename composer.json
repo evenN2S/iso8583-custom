@@ -1,11 +1,11 @@
 {
-    "name": "miome/iso8583",
-    "description": "ISO8583 Pack/Unpack library",
+    "name": "evenN2S/iso8583-custom",
+    "description": "ISO8583 Pack/Unpack library based on m1ome/iso8583",
     "license": "MIT",
     "authors": [
         {
-            "name": "w1n2k",
-            "email": "cryfall@gmail.com"
+            "name": "evenN2S",
+            "email": "even@net2software.com"
         }
     ],
     "autoload": {
@@ -15,7 +15,7 @@
     "repositories": [
         {
             "type": "git",
-            "url": "https://github.com/m1ome/iso8583"
+            "url": "https://github.com/evenN2S/iso8583-custom"
         }
     ],
     "require": {
