@@ -7,7 +7,7 @@ use ISO8583\Message;
 
 $iso = new Protocol();
 $message = new Message($iso, [
-    'lengthPrefix' => 0
+    'lengthPrefix' => 4
 ]);
 
 // Packing message
@@ -34,5 +34,6 @@ $message->setField(42, "000000000020553");
 $message->setField(43, "Location2              Welwyn Garden01GB");
 $message->setField(49, "826");
 $message->setField(59, "0000456445|0000|PCZ257000155");
+$message->setField(70, "301");
 
 echo $message->pack() . PHP_EOL;

@@ -28,11 +28,35 @@ class Message
 	public function __construct(Protocol $protocol, $options = [])
 	{
 		$defaults = [
-			'lengthPrefix' => null
+			'lengthPrefix' => 4,
 		];
 
 		$this->options = $options + $defaults;
 		$this->protocol = $protocol;
+	}
+
+	protected function hex2str($hex)
+	{
+	    $str = '';
+	    
+	    for ($i = 0; $i < strlen($hex); $i += 2)
+	    	$str .= chr(hexdec(substr($hex, $i, 2)));
+
+	    return strtoupper($str);
+	}
+
+	protected function str2hex($string)
+	{
+	    $hex = '';
+	    
+	    for ($i = 0; $i < strlen($string); $i++)
+	    {
+	        $ord = ord($string[$i]);
+	        $hexCode = dechex($ord);
+	        $hex .= substr('0' . $hexCode, -2);
+	    }
+
+	    return strtoupper($hex);
 	}
 
 	protected function shrink(&$message, $length) 
@@ -51,12 +75,12 @@ class Message
 				unset($this->fields[$key]);
 			}
 		}
-		
+
 		// Populating bitmap
 		$bitmap = "";
 		$bitmapLength = 64 * (floor(max(array_keys($this->fields)) / 64) + 1);
-
 		$tmpBitmap = "";
+		
 		for($i=1; $i <= $bitmapLength; $i++) {
 			if (
 				$i == 1 && $bitmapLength > 64 ||
@@ -68,19 +92,27 @@ class Message
 				$tmpBitmap .= '0';
 			}
 
-			if ($i % 64 == 0) {
-				for($i=0; $i<64; $i+=4){
-        			$bitmap .= sprintf('%01x', base_convert(substr($tmpBitmap, $i, 4), 2, 10));
+			if ($i % $bitmapLength == 0)
+			{
+				for ($j = ($bitmapLength / $i) - 1; $j < $bitmapLength; $j += 4)
+				{
+        			$bitmap .= sprintf('%01x', base_convert(substr($tmpBitmap, $j, 4), 2, 10));
       			}
 			}
 		}
+
+		$this->bitmap = $tmpBitmap;
+
+		$bitmap = bin2hex($bitmap);
 
 		// Getting field IDS
 		ksort($this->fields);
 
 		// Packing fields
 		$message = "";
-		foreach($this->fields as $id => $data) {
+
+		foreach ($this->fields as $id => $data)
+		{
 			$fieldData = $this->protocol->getFieldData($id);
 			$fieldMapper = $fieldData['type'];
 
@@ -94,8 +126,8 @@ class Message
 				($mapper->getLength() > strlen($data) && $mapper->getVariableLength() === 0 ) ||
 				$mapper->getLength() < strlen($data)
 			) {
-				$error = 'FIELD [' . $id . '] should have length: ' . $mapper->getLength() . ' and your message "' . $data . "' is " . strlen($data);
-				throw new Error\PackError($error);
+				$error = 'BIT [' . $id . '] should have length ' . $mapper->getLength() . ' and your message "' . $data . '" is ' . strlen($data);
+				throw new Error\PackError($error, $id);
 			}			
 
 			$message .= $mapper->pack($data);		
@@ -103,23 +135,35 @@ class Message
 
 		// Packing all message
 		$message = $mti . $bitmap . $message;
-		if ($this->options['lengthPrefix'] > 0) {
-			$message = bin2hex(sprintf('%0' . $this->options['lengthPrefix'] . 'd', strlen($message) / 2)) . $message;
+		
+		if ($this->options['lengthPrefix'] > 0)
+		{
+			$modifier = 2;
+		
+			$length = bin2hex(sprintf('%0' . $this->options['lengthPrefix'] . 'd', strlen($message) / $modifier));
+			
+			$this->length = $this->hex2str($length);
+
+			$message = $length . $message;
 		}
 
-		return $message;
+		return $this->hex2str($message);
 	}
 
 	public function unpack($message)
 	{
+		$message = $this->str2hex($message);
+
 		// Getting message length if we have one
 		if ($this->options['lengthPrefix'] > 0) {
-			$length = (int)hex2bin(substr($message, 0, (int)$this->options['lengthPrefix'] * 2));
-			$this->shrink($message, (int)$this->options['lengthPrefix'] * 2);
+			$modifier = 2;
 
-			if (strlen($message) != $length * 2) {
-				throw new UnpackError('Message length is ' . strlen($message) / 2 . ' and should be ' . $length);
-			}
+			$this->length = $length = (int) hex2bin(substr($message, 0, (int) $this->options['lengthPrefix'] * $modifier));
+
+			$this->shrink($message, (int) $this->options['lengthPrefix'] * $modifier);
+
+			if (strlen($message) != $length * $modifier)
+				throw new UnpackError('Message length is ' . strlen($message) / $modifier . ' and should be ' . $length);
 		}
 
 		// Parsing MTI 
@@ -128,12 +172,14 @@ class Message
 
 		// Parsing bitmap
 		$bitmap = "";
+
 		for(;;) {
 			$tmp = implode(null, array_map(function($bit) {
 				return str_pad(base_convert($bit, 16, 2), 8, 0, STR_PAD_LEFT);
-			}, str_split(substr($message, 0, 16), 2)));
+			}, str_split($this->hex2str(substr($message, 0, 32)), 2)));
 
-			$this->shrink($message, 16);
+			$this->shrink($message, 32);
+
 			$bitmap .= $tmp;
 
 			if (substr($tmp, 0, 1) !== "1" || strlen($bitmap) > 128) {
@@ -146,6 +192,7 @@ class Message
 		// Parsing fields
 		for($i=0; $i < strlen($bitmap); $i++) {
 			if ($bitmap[$i] === "1") {
+				
 				$fieldNumber = $i + 1;
 
 				if ($fieldNumber === 1 || $fieldNumber === 65) {
@@ -165,6 +212,8 @@ class Message
 				$this->setField($fieldNumber, $unpacked);
 			}
 		}
+
+		return $this;
 	}
 
 	public function getMTI()
@@ -203,6 +252,9 @@ class Message
 
 	public function setField($field, $value)
 	{
+		if (! preg_match('/^(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9]|[1-9])$/', $field))
+			throw new \Exception("BIT [$field] IS OUT OF RANGE");
+
 		$this->fields[(int)$field] = $value;
 	}
 
@@ -214,5 +266,28 @@ class Message
 	public function getBitmap()
 	{
 		return $this->bitmap;
+	}
+
+	public function getBitmapString()
+	{
+		return implode(
+			null,
+			array_map(
+				function ($binary)
+				{
+					return strtoupper(base_convert($binary, 2, 16));
+				}, str_split($this->bitmap, 4)
+			)
+		);
+	}
+
+	public function getLength()
+	{
+		return (int) $this->length;
+	}
+
+	public function getLengthString()
+	{
+		return str_pad($this->length, $this->options['lengthPrefix'], '0', 0);
 	}
 }
