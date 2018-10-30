@@ -11,7 +11,7 @@ class AlphaNumeric extends AbstractMapper
 
 		if ($this->getVariableLength() > 0)
 		{
-			$hexLength = (int) ceil(strlen(dechex($this->getVariableLength())) / 2) * 4;
+			$hexLength = (int) ceil($this->getVariableLength() / 2) * 2;
 			$length = sprintf('%0' . $hexLength . 'd', strlen($packed) / 2);
 			$packed = $length . $packed;
 		}
@@ -22,7 +22,7 @@ class AlphaNumeric extends AbstractMapper
 	public function unpack(&$message)
 	{
 		if ($this->getVariableLength() > 0) {
-			$hexLength = (int) ceil(strlen(dechex($this->getVariableLength())) / 2) * 4;
+			$hexLength = (int) (int) ceil($this->getVariableLength() / 2) * 2;
 			$length = (int) substr($message, 0, $hexLength);
 		} else {
 			$hexLength = 0;
