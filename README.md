@@ -8,7 +8,7 @@ use ISO8583\Protocol;
 use ISO8583\Message;
 
 $iso = new Message(new Protocol(), [
-	'lengthPrefix' => 4 # Or you can ignore this, default length is 4
+    'lengthPrefix' => 4 # Or you can ignore this, default length is 4
 ]);
 
 # Unpacking message
@@ -24,7 +24,7 @@ use ISO8583\Protocol;
 use ISO8583\CustomMessage;
 
 $iso = new CustomMessage(new Protocol(), [
-	'lengthPrefix' => 4 # Or you can ignore this, default length is 4
+    'lengthPrefix' => 4 # Or you can ignore this, default length is 4
 ]);
 
 # Unpacking message
@@ -40,7 +40,7 @@ use ISO8583\Protocol;
 use ISO8583\CustomMessage;
 
 $iso = new CustomMessage(new Protocol(), [
-	'mode' => CustomMessage::MODE_HPDH
+    'mode' => CustomMessage::MODE_HPDH
 ]);
 
 # Unpacking message
