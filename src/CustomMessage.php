@@ -6,6 +6,10 @@ use ISO8583\Error\PackError;
 
 class CustomMessage extends Message
 {
+	const MODE_DEFAULT = 1;
+	const MODE_HPDH = 2;
+
+	protected $tpdu;
 	protected $mappers = [
 		'a'     => Mapper\Custom\AlphaNumeric::class,
 		'n'     => Mapper\Custom\Numeric::class,
@@ -17,6 +21,67 @@ class CustomMessage extends Message
 		'b'	    => Mapper\Binary::class,
 		'z'	    => Mapper\Custom\AlphaNumeric::class
 	];
+	
+	public function __construct(Protocol $protocol, $options = [])
+	{
+		$defaults = [
+			'mode' => self::MODE_DEFAULT,
+			'lengthPrefix' => 4,
+			'TPDULength' => 10,
+		];
+
+		$this->options = $options + $defaults;
+
+		if ($this->options['mode'] == self::MODE_HPDH)
+		{
+			$this->protocol = new Protocol(implode(DIRECTORY_SEPARATOR, [__DIR__, 'SchemaHPDH.json']));
+		} else {
+			$this->protocol = $protocol;
+		}
+    }
+	
+    protected function stripTPDU(&$message)
+    {
+        if ($this->options['mode'] == self::MODE_HPDH)
+            $this->tpdu = $this->shrink($message, (int) $this->options['TPDULength']);
+    }
+
+    protected function addTPDU(&$message)
+    {
+        if ($this->tpdu)
+            $message = $this->tpdu . $message;
+    }
+
+    protected function addLength(&$message)
+    {
+        $this->addTPDU($message);
+
+		if ($this->options['lengthPrefix'] > 0)
+		{
+			$hexLength = sprintf('%0' . $this->options['lengthPrefix'] . 'X', (int) ceil(strlen($message) / 2));
+			$this->length = hexdec($hexLength);
+			$message = $hexLength . $message;
+		}
+	}
+
+    public function getTPDU()
+    {
+        return $this->tpdu;
+	}
+	
+	public function setTPDU($tpdu)
+	{
+		$this->tpdu = $tpdu;
+
+		return $this;
+	}
+
+	public function setTPDULength(int $length)
+	{
+		$this->options['TPDULength'] = $length;
+
+		return $this;
+	}
 
 	public function getLength()
 	{
@@ -62,6 +127,8 @@ class CustomMessage extends Message
 			if (floor(strlen($message) / 2) != $length)
 				throw new UnpackError('Message length is ' . floor(strlen($message) / 2) . ' and should be ' . $length);
 		}
+
+		$this->stripTPDU($message);
 
 		# Parsing MTI 
 		$this->setMTI(substr($message, 0, 4));
@@ -151,12 +218,6 @@ class CustomMessage extends Message
         			$bitmap .= sprintf('%01x', base_convert(substr($tmpBitmap, $j, 4), 2, 10));
       			}
 			}
-
-			// if ($i % 64 == 0)
-			// {
-			// 	for ($i=0; $i<64; $i+=4)
-   //      			$bitmap .= sprintf('%01x', base_convert(substr($tmpBitmap, $i, 4), 2, 10));
-			// }
 		}
 
 		$this->bitmap = strtoupper($bitmap);
@@ -190,13 +251,8 @@ class CustomMessage extends Message
 
 		# Packing all message
 		$message = $mti . $bitmap . $message;
-
-		if ($this->options['lengthPrefix'] > 0)
-		{
-			$hexLength = sprintf('%0' . $this->options['lengthPrefix'] . 'X', strlen($message) / 2);
-			$this->length = hexdec($hexLength);
-			$message = $hexLength . $message;
-		}
+		
+		$this->addLength($message);
 
 		return strtoupper($message);
 	}

@@ -61,7 +61,9 @@ class Message
 
 	protected function shrink(&$message, $length) 
 	{
+		$stripped = substr($message, 0, $length);
 		$message = substr($message, $length);
+		return $stripped;
 	}
 
 	public function pack()
