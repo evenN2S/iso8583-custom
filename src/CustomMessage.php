@@ -19,7 +19,7 @@ class CustomMessage extends Message
 		'ns'    => Mapper\Custom\AlphaNumeric::class,
 		'ans'   => Mapper\Custom\AlphaNumeric::class,
 		'b'	    => Mapper\Binary::class,
-		'z'	    => Mapper\Custom\AlphaNumeric::class
+		'z'	    => Mapper\Custom\TrackData::class
 	];
 	
 	public function __construct(Protocol $protocol, $options = [])
@@ -196,7 +196,7 @@ class CustomMessage extends Message
 		
 		# Populating bitmap
 		$bitmap = "";
-		$bitmapLength = 64 * (floor(max(array_keys($this->fields)) / 64) + 1);
+		$bitmapLength = 64 * (floor(max(array_keys($this->fields)) / 65) + 1);
 		$tmpBitmap = "";
 
 		for ($i=1; $i <= $bitmapLength; $i++)

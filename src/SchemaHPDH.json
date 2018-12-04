@@ -105,7 +105,7 @@
         "description": "Forwarding institution. country code"
     },
     "22": {
-        "type": "an",
+        "type": "n",
         "length": "4",
         "description": "Point of service entry mode"
     },
@@ -191,7 +191,7 @@
     },
     "42": {
         "type": "ans",
-        "length": "16",
+        "length": "15",
         "description": "Card acceptor identification code"
     },
     "43": {
@@ -280,8 +280,8 @@
         "description": "Reserved national"
     },
     "60": {
-        "type": "n",
-        "length": "..10",
+        "type": "ans",
+        "length": "...999",
         "description": "Reserved national"
     },
     "61": {
@@ -301,7 +301,7 @@
     },
     "64": {
         "type": "b",
-        "length": "16",
+        "length": "8",
         "description": "Message authentication code (MAC)"
     },
     "65": {
